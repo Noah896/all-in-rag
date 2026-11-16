@@ -57,7 +57,6 @@ flowchart LR
 │       ├── retrieval_optimization.py
 │       └── generation_integration.py
 ├── data/C8/cook/dishes/            # 323 份 Markdown 菜谱
-├── tests/
 ├── .github/workflows/ci.yml
 └── .env.example
 ```
@@ -186,11 +185,10 @@ HF_ENDPOINT=https://hf-mirror.com
 
 ## 开发与检查
 
-运行数据完整性和配置检查：
+运行代码语法检查：
 
 ```bash
 python -m compileall -q code/C8
-python -m unittest discover -s tests -v
 ```
 
 当前知识库包含 323 份菜谱，结构化分块后可生成约 1,764 个可检索文本块。
