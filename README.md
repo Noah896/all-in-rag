@@ -59,8 +59,7 @@ flowchart LR
 ├── data/C8/cook/dishes/            # 323 份 Markdown 菜谱
 ├── tests/
 ├── .github/workflows/ci.yml
-├── .env.example
-└── NOTICE.md
+└── .env.example
 ```
 
 ## 快速开始
@@ -205,5 +204,4 @@ python -m unittest discover -s tests -v
 
 ## 数据说明
 
-项目使用 Markdown 作为知识库格式，RAG 流程只读取文本内容。菜谱数据来源和许可
-信息记录在 [NOTICE.md](NOTICE.md) 中。
+项目使用 Markdown 作为知识库格式，RAG 流程只读取文本内容。
