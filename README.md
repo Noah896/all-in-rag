@@ -1,159 +1,209 @@
-# 尝尝咸淡 RAG：菜谱知识库问答
+# 尝尝咸淡 RAG
 
-这是一个可独立运行的食谱 RAG 示例项目，代码来自
-[All-in-RAG 第八章](https://github.com/datawhalechina/all-in-rag/tree/main/code/C8)，
-知识库来自 [HowToCook](https://github.com/Anduin2017/HowToCook)。
+一个独立运行的菜谱知识库问答项目。
 
-系统会读取 Markdown 菜谱，按标题建立父子文本块，使用 BGE 向量和 BM25 做混合检索，
-再通过 Moonshot/Kimi 生成列表、详细步骤或一般性回答。
+项目将中文菜谱整理成结构化知识库，在本地完成文本切分、向量化和混合检索，
+再结合 Kimi 为用户推荐菜品、查找食材并生成详细烹饪步骤。
 
-## 功能
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![FAISS](https://img.shields.io/badge/Vector%20Store-FAISS-0467DF)
+![LangChain](https://img.shields.io/badge/Framework-LangChain-1C3C3C)
 
-- 将 300 多份 Markdown 菜谱切分为结构化子块。
-- 使用 `bge-small-zh-v1.5` 构建 FAISS 向量索引。
-- 将向量检索与 BM25 检索通过 RRF 融合。
-- 支持按菜品分类和难度进行元数据过滤。
-- 支持列表、详细步骤、一般问答三种生成模式。
-- 自动缓存向量索引，后续启动无需重复构建。
+## 项目简介
+
+面对“今天吃什么”“这道菜需要什么食材”“具体怎么做”这类问题，传统关键词搜索
+容易漏掉语义相关的内容，普通大模型又可能给出不准确或缺少依据的回答。
+
+尝尝咸淡 RAG 把菜谱知识库和生成模型连接起来，通过父子文本块、BGE 向量检索、
+BM25 关键词检索和 RRF 融合，让回答既具备检索到的真实菜谱依据，也能以自然语言
+呈现制作过程。
+
+## 核心能力
+
+- **菜谱问答**：查询具体菜品、食材、用量和制作步骤。
+- **菜品推荐**：按分类、难度和饮食需求推荐菜品。
+- **混合检索**：结合语义向量检索与 BM25 关键词检索。
+- **父子文档**：使用小块精确定位，再用完整菜谱生成回答。
+- **元数据过滤**：支持荤菜、素菜、汤品、主食、甜品等分类。
+- **索引缓存**：首次构建 FAISS 索引，后续启动直接复用。
+- **流式回答**：在命令行中实时展示生成内容。
+
+## 系统流程
+
+```mermaid
+flowchart LR
+    A[用户问题] --> B[查询路由]
+    B --> C[查询重写]
+    C --> D[BGE 向量检索]
+    C --> E[BM25 检索]
+    D --> F[RRF 融合排序]
+    E --> F
+    F --> G[父子文档扩展]
+    G --> H[Kimi 生成回答]
+    H --> I[列表 / 步骤 / 通用回答]
+```
 
 ## 项目结构
 
 ```text
 .
 ├── code/C8/
-│   ├── config.py
-│   ├── main.py
+│   ├── main.py                     # 应用入口
+│   ├── config.py                   # 模型、路径与检索配置
 │   ├── requirements.txt
 │   └── rag_modules/
-│       ├── data_preparation.py
-│       ├── generation_integration.py
-│       ├── index_construction.py
-│       └── retrieval_optimization.py
-├── data/C8/cook/
-│   └── dishes/                 # 323 份 Markdown 菜谱
+│       ├── data_preparation.py     # 菜谱加载、分块与元数据
+│       ├── index_construction.py   # BGE + FAISS 索引
+│       ├── retrieval_optimization.py
+│       └── generation_integration.py
+├── data/C8/cook/dishes/            # 323 份 Markdown 菜谱
 ├── tests/
+├── .github/workflows/ci.yml
 ├── .env.example
 └── NOTICE.md
 ```
 
-RAG 只读取 `data/C8/cook` 中的 Markdown 文件。上游仓库里的配图是 Git LFS
-占位对象，但 LFS 原文件已无法从远端取得，因此本仓库不包含这些无效图片，
-不影响知识库构建和问答。
-
-## 环境要求
-
-- Python 3.10 或更高版本，推荐 Python 3.12
-- 可访问 Moonshot API 的网络环境
-- 首次构建向量索引时需要下载嵌入模型，或提前准备本地模型
-
 ## 快速开始
+
+### 1. 获取项目
 
 ```bash
 git clone https://github.com/Noah896/all-in-rag.git
-cd all-in-rag/code/C8
-
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux/macOS
-# source .venv/bin/activate
-
-pip install -r requirements.txt
+cd all-in-rag
 ```
 
-在仓库根目录创建 `.env`，并填写自己的 API Key：
+### 2. 创建 Python 环境
 
 ```bash
-cp ../../.env.example ../../.env
+python -m venv .venv
 ```
 
-Windows PowerShell 也可以直接执行：
+Windows PowerShell：
 
 ```powershell
-Copy-Item ..\..\.env.example ..\..\.env
+.\.venv\Scripts\Activate.ps1
 ```
 
-编辑仓库根目录的 `.env`：
+Linux 或 macOS：
+
+```bash
+source .venv/bin/activate
+```
+
+### 3. 安装依赖
+
+```bash
+pip install -r code/C8/requirements.txt
+```
+
+### 4. 配置 API Key
+
+复制环境变量模板：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+编辑 `.env`，填写 Moonshot API Key：
 
 ```dotenv
 MOONSHOT_API_KEY=your_moonshot_api_key
 ```
 
-运行：
+API Key 可在 [Moonshot 开放平台](https://platform.moonshot.cn/console/api-keys) 创建。
 
-```bash
-python main.py
-```
-
-也可以从仓库根目录运行：
+### 5. 启动项目
 
 ```bash
 python code/C8/main.py
 ```
 
-程序会从 `code/C8` 所在位置解析数据和索引路径，因此不依赖当前工作目录。
+首次启动会加载嵌入模型并构建向量索引。索引生成后保存在
+`code/C8/vector_index`，后续启动会自动复用。
+
+## 使用示例
+
+```text
+您的问题: 宫保鸡丁怎么做？
+查询类型: detail
+
+为您生成菜品介绍、所需食材、制作步骤和烹饪技巧。
+```
+
+```text
+您的问题: 推荐几道简单的素菜
+查询类型: list
+
+1. 西红柿炒鸡蛋
+2. 酸辣土豆丝
+3. 蒜蓉西兰花
+```
+
+可以直接尝试：
+
+- 红烧肉需要哪些食材？
+- 推荐几道适合新手的菜。
+- 今天有什么容易做的汤？
+- 糖醋排骨的步骤是什么？
 
 ## 嵌入模型
 
-默认模型是 `BAAI/bge-small-zh-v1.5`。第一次运行时，Hugging Face 会自动下载模型；
-如果已经下载到以下任意目录，程序会自动优先使用本地文件：
+项目默认使用 `BAAI/bge-small-zh-v1.5`。首次运行时需要联网从 Hugging Face
+下载，也可以提前准备本地模型：
 
 ```text
 models/bge-small-zh-v1.5/
 code/C8/models/bge-small-zh-v1.5/
 ```
 
-本地模型目录至少应包含 `config.json`，以及 `model.safetensors` 或
-`pytorch_model.bin`。完全离线运行时，可在 `.env` 中加入：
+本地目录至少需要包含 `config.json`，以及 `model.safetensors` 或
+`pytorch_model.bin`。
+
+完全离线运行时，在 `.env` 中添加：
 
 ```dotenv
 HF_HUB_OFFLINE=1
 TRANSFORMERS_OFFLINE=1
 ```
 
-如需使用 Hugging Face 镜像，可设置：
+如需使用 Hugging Face 镜像：
 
 ```dotenv
 HF_ENDPOINT=https://hf-mirror.com
 ```
 
-## 示例问题
+## 配置说明
 
-- 宫保鸡丁怎么做？
-- 红烧肉需要哪些食材？
-- 推荐几道简单的素菜。
-- 今天有什么容易做的汤？
-
-## 配置
-
-主要配置位于 `code/C8/config.py`：
+核心配置位于 `code/C8/config.py`：
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
-| `data_path` | `data/C8/cook` | 菜谱 Markdown 数据目录 |
-| `index_save_path` | `code/C8/vector_index` | FAISS 索引缓存目录 |
+| `data_path` | `data/C8/cook` | 菜谱知识库 |
+| `index_save_path` | `code/C8/vector_index` | FAISS 索引目录 |
 | `embedding_model` | `BAAI/bge-small-zh-v1.5` | 向量嵌入模型 |
-| `llm_model` | `kimi-k2.6` | 生成模型 |
-| `top_k` | `3` | 最终返回的检索结果数 |
-| `temperature` | `1.0` | `kimi-k2.6` 支持的生成温度 |
+| `llm_model` | `kimi-k2.6` | 回答生成模型 |
+| `top_k` | `3` | 最终返回检索结果数量 |
+| `temperature` | `1.0` | Kimi K2.6 支持的生成温度 |
 
-## 本地检查
+## 开发与检查
 
-以下检查不调用外部 API，也不需要安装项目依赖：
+运行数据完整性和配置检查：
 
 ```bash
 python -m compileall -q code/C8
 python -m unittest discover -s tests -v
 ```
 
-## 安全说明
+当前知识库包含 323 份菜谱，结构化分块后可生成约 1,764 个可检索文本块。
 
-- `.env` 已被 `.gitignore` 排除，不要提交真实 API Key。
-- `vector_index`、模型文件、虚拟环境和 Python 缓存不会进入 Git。
-- 如果密钥曾经进入 Git 历史，应立即在服务商控制台撤销并重新生成。
+## 安全与版本管理
 
-## 数据与来源
+- `.env`、API Key 和本地模型不会进入 Git。
+- FAISS 索引属于运行产物，不提交到仓库。
+- 如需新增配置项，请同步更新 `.env.example` 和 README。
+- 如果密钥曾经进入提交历史，应立即撤销并重新生成。
 
-菜谱数据来自 HowToCook，该项目使用 Unlicense。代码来自 All-in-RAG 教程的第八章。
-上游 All-in-RAG 仓库目前没有根目录许可证文件，因此本仓库不擅自追加开源许可证；
-详细来源和复用说明见 [NOTICE.md](NOTICE.md)。
+## 数据说明
+
+项目使用 Markdown 作为知识库格式，RAG 流程只读取文本内容。菜谱数据来源和许可
+信息记录在 [NOTICE.md](NOTICE.md) 中。
