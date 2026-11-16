@@ -1,0 +1,42 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.secret
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated RAG assets
+code/C8/vector_index/
+*.faiss
+*.pkl
+
+# Models
+models/
+code/C8/models/
+
+# Logs and caches
+*.log
+logs/
+.cache/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
